@@ -1,0 +1,42 @@
+service: meta-data-serverless
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  environment:
+    DYNAMO_TABLE_NAME: MetaData
+    BUCKET_NAME: new-bucket-caps2
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - rekognition:RecognizeCelebrities
+        - s3:Get*
+        - s3:List*
+      Resource: "*"
+
+functions:
+  processImg:
+    handler: src/index.handler
+    events:
+      - s3:
+          bucket: ${self:provider.environment.BUCKET_NAME}
+          event: s3:ObjectCreated:*
+          existing: true
+
+resources:
+  Resources:
+    UsersDynamoDbTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.environment.DYNAMO_TABLE_NAME}
